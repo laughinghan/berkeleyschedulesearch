@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Berkeley Schedule Search</title>
+
+<style type="text/css">
+body{
+	font:9pt Verdana;
+	color:black;
+	background-color:white;
+}
+#title{
+	color:black;
+	text-decoration:none;
+}
+#title:hover{
+	color:mediumblue;
+	text-decoration:underline;
+}
+#newSearch{
+	float:right;
+	position:relative;
+	bottom:2pt;	/*	This actually makes it 2pts lower than the bottom of the title, but it looks better because of the optical illusion of the wide spacing with the text near it.	*/
+}
+#stupidIE,#noJS,#loading,tr.more>td td:first-child,tr.sec,tr.more,span.hidden{
+	display:none;
+}
+#stupidIE,#noResults>p:first-child{
+	font-size:10.5pt;
+}
+#searchResults, #searchResults table{
+	border:none;
+	border-collapse:collapse;
+	width:100%;
+}
+#searchResults th{
+    text-align:left;
+    padding:1pt 2pt 0;
+	background-color:mediumblue;
+	color:white;
+	font-weight:bold;
+	font-size:10pt;
+}
+#searchResults>tbody:hover,
+#searchResults>tbody.selected:hover{
+  -webkit-box-shadow: #68B4DF 0 0 3px 2px;
+  -moz-box-shadow: #68B4DF 0 0 3px 2px;
+  box-shadow: #68B4DF 0 0 3px 2px;
+}
+tr.sec tbody:hover{
+	background-color:#FFFDE0;
+}
+tbody.bg0{
+	background-color:#FFF;
+}
+tbody.bg1,tbody.bg3{
+	background-color:#E8F8FF;
+}
+tbody.bg2{
+	background-color:#D4F4FF;
+}
+#searchResults>tbody.selected{
+	display:table-row-group !important;	/*don't want to hide this when hiding bad results*/
+  -webkit-box-shadow: black 0 0 0 2px;
+  -moz-box-shadow: black 0 0 0 2px;
+  box-shadow: black 0 0 0 2px;
+}
+tr.sec tbody.selected,tr.sec tbody.selected tbody{
+	background-color:#FFFDC0;
+}
+tr.bad,tr.bad+tr+tr{
+	color:gray;
+}
+tbody.selected>tr{
+	color:black;
+}
+#searchResults td{
+    margin:0;
+    padding:1pt 2pt;
+	line-height:11pt;
+}
+#searchResults td:first-child,tr.more>td+td,tr.sec>td+td{
+	width:1px;	/* Not literally, just minimizes width as per the standardized table layout algorithm. */
+}
+#searchResults td[colspan="7"]{
+	padding:0 2pt 3pt 2pt;
+}
+#badResults td{
+	padding:2pt !important;
+}
+#searchResults td.time,#searchResults th.time,#searchResults td.units,#searchResults th.units{
+	text-align:center;
+}
+td.bad{
+	font-weight:bold;
+	color:red;
+}
+td.edd{
+	font-weight:bold;
+	color:black;	/*I don't want .bad to make it gray*/
+}
+#searchResults>tbody>tr:first-child,#searchResults tr.sec>td>table>tbody>tr:first-child{
+	cursor:pointer;
+}
+#searchResults td.restrictions a[href="javascript:void(0)"]{
+    color:mediumblue;
+    text-decoration:none;
+}
+#searchResults td.restrictions:hover a[href="javascript:void(0)"]{
+    text-decoration:underline;
+}
+big,img{
+	font-size:125%;
+	vertical-align:middle;
+	border:none;
+}
+</style>
+
+</head>
+<body>
+
+<div>
+
+<p id="newSearch"><a href=".">New Search</a></p>
+
+<h1><a id="title" href="." title="New Search">Better Schedule Search</a></h1>
+
+</div>
+
+<p>By Jay and <a href="mailto:laughinghan@berkeley.edu">Han (laughinghan@berkeley.edu)</a>, powered by <b><a href="http://jquery.com">jQuery</a></b>.</p>
+
+<pre id="debug"></pre>
+
+<p id="stupidIE">It seems you are using Microsoft Internet Explorer. If so this probably will not work. Try <a href="http://google.com/chrome">Google Chrome</a> instead.</p>
+
+<script type="text/javascript">
+document.write('<p id="loading">Loading</p><div id="noJS">');
+</script>
+<p>It seems you cannot or do not wish to use JavaScript. If so this will not work for you. <a href="http://schedule.berkeley.edu/">Try the original Online Schedule of Classes instead.</a></p>
+<script type="text/javascript">
+document.write('</div>');
+</script>
+
+<?php if($_GET):
+
+$x = array();
+
+global $debug;
+$debug = isset($_GET['debug']);
+if ($debug)
+    unset($_GET['debug']);
+
+load_results($_GET, $x, $debug);
+
+if ($x['noResults']) {
+?>
+
+<div id="noResults">
+<p>No results.</p>
+<p>I'm sorry, but apparently there are no classes that match your search criteria.</p>
+<p>Not my fault, just what Berkeley's servers are telling me. <a href="<?php echo OSOC_BASE.http_build_query($_GET)?>">See for yourself</a>.</p>
+</div>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery<%= ".min" unless @dev %>.js"></script>
+<script type="text/javascript">
+<% if @dev %>
+window.onerror = function() {
+  $('html').css('background', 'red');
+};
+<% end %>
+
+$(function(){
+	if($.browser.msie)
+		$('p#stupidIE').show();
+	if(history.navigationMode)
+		history.navigationMode='fast';
+	$('table#searchResults>tbody>tr:first-child,table#searchResults tr.sec>td>table>tbody>tr:first-child').live('click',function(){
+		var tr = $(this);
+		tr.children().eq(0).html(tr.nextAll().toggle().parent().toggleClass('selected').hasClass('selected')?'&#9660;':'&#9654;');
+		var restr = tr.next().find('td.restrictions');
+		if (restr.length && restr.height() > 1.5*restr.parent().prev().height() && restr.find('a[href="javascript:void(0)"]').length == 0)
+			restr.append(' <a href="javascript:void(0)">&laquo;less</a>');
+	});
+	$('table#searchResults td.restrictions:has(a[href="javascript:void(0)"])').live('click',function(){
+		var parent = $(this), me = parent.find('a[href="javascript:void(0)"]');
+		if (me.next().length) {
+			me.remove();
+			parent.html(parent.text()+' <a href="javascript:void(0)">&laquo;less</a>');
+		} else {
+			var stdHeight = 1.5*me.height();
+			me.remove();
+			var html = parent.html();
+			var i = Math.floor(html.length*stdHeight/parent.height());
+			for (; parent.height() > stdHeight; i -= 4)
+					parent.html(html.slice(0, i));
+			parent.html(html.slice(0, i));
+			me.html('&hellip;&raquo;');
+			parent.append(me).append('<span class="hidden">' + html.slice(i) + '</span>');
+		}
+	});
+	var x = $('table#searchResults>tbody');
+	if(x.length == 1)
+		x.children().eq(0).click();
+});
+function searchFormOnSubmit(e){
+	var q='';
+	$.each(e.elements,function(){if(this.value)q+='&'+this.name+'='+this.value;});
+	location.search='?'+q.slice(1);
+}
+</script>
+
+</body>
+</html>

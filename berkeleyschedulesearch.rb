@@ -1,5 +1,6 @@
 require 'sinatra'
 require 'erubis'
+require 'json'
 
 #templates are just in .
 set :views, File.dirname(__FILE__)
